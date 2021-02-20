@@ -13,12 +13,13 @@ from argparse import ArgumentParser
 from collections import defaultdict
 from functools import reduce
 from ete3 import Tree, TreeStyle, NodeStyle
-import matplotlib.pyplot as plt
 from processing import change_support_format, trim_name, add_multi_annotation, \
     match_score, maxindices
 
 parser = ArgumentParser('Draw a tree and color multiples')
 parser.add_argument('-t', type=str, help='Tree file (Newick)')
+parser.add_argument('-s', type=float, default=-0.4,
+                    help='Match score threshold')
 parser.add_argument('--bracketed_support', action='store_true',
                     help='Assume support values are bracketed')
 parser.add_argument('--quoted_names', action='store_true',
@@ -43,7 +44,6 @@ for leaf in tree.get_leaves():
         multies[leaf.name] = leaf
 # Trim subdomain numbers from non-multiple sequences
 # This part is ugly, but it works for now
-# TODO: Use matches produced in this stage to color the tree
 to_trim = {} #Name:prefix
 for name in multies:
     prefix = '_'.join(name.split('_')[:-1])
@@ -78,14 +78,14 @@ matches = []
 for index, line in enumerate(match_matrix):
     for element in range(len(line)):
         # Could use less checks, but at least this is readable
-        if line[element] < 0.4:
+        if line[element] < args.s:
             # Match quality cutoff. The exact value is arbitrary, but anything
             # above 0.01 produces the same result in Chalcone
             continue
         if element == index:
             # No self matches
             continue
-        if match_matrix[element][index] < 0.4:
+        if match_matrix[element][index] < args.s:
             continue
         # if index not in maxindices(match_matrix[element]):
         #     # Not reciprocal
