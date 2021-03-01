@@ -158,7 +158,6 @@ print(f'{len(clean_matches)} matches between {len(tmp)} nodes remaining')
 # For example, if three nodes have mutually overlapping sets of descendants,
 # they should become a single group of three, not three pairwise matches
 print('Merging matches into groups...')
-#TODO: fix group generation
 groups = []
 for match in clean_matches:
     added = False
@@ -167,23 +166,9 @@ for match in clean_matches:
             group.add(match[0])
             group.add(match[1])
             added = True
-            continue
+            break
     if not added:
         groups.append(set(match))
-# while clean_matches:
-#     group = set(clean_matches.pop())
-#     to_remove = []
-#     for other_match in clean_matches:
-#         if other_match[0] in group or other_match[1] in group:
-#             group = group.union(set(other_match))
-#     if group not in groups:
-#         groups.append(group)
-#     # by_node[match[0]] += match
-#     # by_node[match[1]] += match
-for group in groups:
-    for other_group in groups:
-        if group.intersection(other_group):
-            print('OVERLAP')
 
 print(f'Produced {len(groups)} groups')
 colors = ('#1f77b4', '#aec7e8', '#ff7f0e', '#ffbb78', '#2ca02c',
