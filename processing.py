@@ -86,3 +86,57 @@ def maxindices(l):
         elif v == max_value:
             max_indices.append(i)
     return max_indices
+
+
+def hmmer_name_mapping(names):
+    """
+    Turn HMMER-produced list of IDs into numbered and trimmed leaf IDs
+    Takes a list of names, returns a dict {old_name: new_name}
+    """
+    r = {}
+    for name in names:
+        # Remove second part of name, it's useless
+        r[name] = name.split(' [subseq')[0]
+    used_queries = set()
+    first_pos_re = re.compile('/(\d+)-\d+ ')
+    for name in r:
+        # Renumber subdomains so that they use their position
+        # in a given protein instead of coordinates
+        query = r[name].split('/')[0]
+        if query in used_queries:
+            continue
+        used_queries.add(query)
+        matches = {x: r[x] for x in r if query in x}
+        if len(matches) > 1:
+            # Add correct number
+            positions = {}
+            for x in matches:
+                re_match = first_pos_re.search(x)
+                first_pos = re_match.groups(1)
+                positions[x] = int(first_pos[0])
+            first_pos = list(positions.values())
+            first_pos.sort()
+            for name in matches:
+                r[name] = query + '_' + str(first_pos.index(positions[name]) + 1)
+        else:
+            # Don't add postfixes and discard coordinates if it is the only domain in a given sequence
+            r[name] = query
+    return r
+
+
+def are_ancestors(node1, node2):
+    """
+    Take two ete3 tree nodes.
+
+    Return True if either is the ancestor of another
+    :param node1:
+    :param node2:
+    :return:
+    """
+    for ancestor in node1.iter_ancestors():
+        if ancestor == node2:
+            return True
+    for ancestor in node2.iter_ancestors():
+        if ancestor == node1:
+            return True
+    return False
