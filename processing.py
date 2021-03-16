@@ -102,9 +102,15 @@ def hmmer_name_mapping(names):
     for name in r:
         # Renumber subdomains so that they use their position
         # in a given protein instead of coordinates
+        if r[name][-2] == '_':
+            # If the name has already been postfixed, it cannot be processed
+            # by the code below
+            print('HERE')
+            continue
         query = r[name].split('/')[0]
         if query in used_queries:
             continue
+        print(query)
         used_queries.add(query)
         matches = {x: r[x] for x in r if query in x}
         if len(matches) > 1:
@@ -120,7 +126,7 @@ def hmmer_name_mapping(names):
                 r[name] = query + '_' + str(first_pos.index(positions[name]) + 1)
         else:
             # Don't add postfixes and discard coordinates if it is the only domain in a given sequence
-            r[name] = query
+            r[name] = query + '_1'
     return r
 
 

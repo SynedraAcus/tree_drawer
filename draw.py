@@ -29,6 +29,8 @@ parser.add_argument('--hmmer_ids', action='store_true',
                     help='Sequence IDs are produced by HMMER')
 parser.add_argument('--skip_pairing', action='store_true',
                     help='Do not attempt to pair ancestral nodes, only mark leaves')
+parser.add_argument('--circular', action='store_true',
+                    help='Use circular tree style')
 args = parser.parse_args()
 
 # Preprocessing the tree line
@@ -44,6 +46,8 @@ if args.hmmer_ids:
     print('Processing HMMER IDs...')
     old_names = [x.name for x in tree.get_leaves()]
     name_map = hmmer_name_mapping(old_names)
+    for i in name_map:
+        print(i, name_map[i])
     for leaf in tree.get_leaves():
         leaf.name = name_map[leaf.name]
 # Defining the multiple set
@@ -56,7 +60,6 @@ for leaf in tree.get_leaves():
     if multi_re.match(leaf.name):
         multies[leaf.name] = leaf
 # Trim subdomain numbers from non-multiple sequences
-# This part is ugly, but it works for now
 print('Trimming postfixes from non-multiples...')
 to_trim = {} #Name:prefix
 for name in multies:
@@ -186,4 +189,6 @@ else:
 ################################################################################
 
 tree_style = TreeStyle()
+if args.circular:
+    tree_style.mode = 'c'
 tree.show(tree_style=tree_style)
