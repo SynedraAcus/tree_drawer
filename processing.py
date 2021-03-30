@@ -105,12 +105,10 @@ def hmmer_name_mapping(names):
         if r[name][-2] == '_':
             # If the name has already been postfixed, it cannot be processed
             # by the code below
-            print('HERE')
             continue
         query = r[name].split('/')[0]
         if query in used_queries:
             continue
-        print(query)
         used_queries.add(query)
         matches = {x: r[x] for x in r if query in x}
         if len(matches) > 1:

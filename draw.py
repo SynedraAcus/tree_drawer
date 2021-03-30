@@ -13,7 +13,7 @@ from argparse import ArgumentParser
 from copy import copy
 from collections import defaultdict
 from functools import reduce
-from ete3 import Tree, TreeStyle, NodeStyle
+from ete3 import Tree, TreeStyle, NodeStyle, CircleFace
 from processing import change_support_format, trim_name, add_multi_annotation, \
     match_score, hmmer_name_mapping, are_ancestors
 
@@ -21,6 +21,10 @@ parser = ArgumentParser('Draw a tree and color multiples')
 parser.add_argument('-t', type=str, help='Tree file (Newick)')
 parser.add_argument('-s', type=float, default=0.5,
                     help='Match score threshold')
+parser.add_argument('-o', type=str,
+                    help='Image file. If not set, the tree is shown interactively.')
+parser.add_argument('--support_threshold', default=0, type=int,
+                    help='Collapse nodes below this support value')
 parser.add_argument('--bracketed_support', action='store_true',
                     help='Assume support values are bracketed')
 parser.add_argument('--quoted_names', action='store_true',
@@ -46,8 +50,6 @@ if args.hmmer_ids:
     print('Processing HMMER IDs...')
     old_names = [x.name for x in tree.get_leaves()]
     name_map = hmmer_name_mapping(old_names)
-    for i in name_map:
-        print(i, name_map[i])
     for leaf in tree.get_leaves():
         leaf.name = name_map[leaf.name]
 # Defining the multiple set
@@ -73,10 +75,17 @@ for name in to_trim:
     del multies[name]
 # Set the markers right now, but leave colors for when we have clades
 multinode_style = NodeStyle()
-multinode_style['shape'] = 'circle'
-multinode_style['size'] = 10
-for leaf in multies.values():
-    leaf.set_style(multinode_style)
+multinode_style['bgcolor'] = 'gray'
+nonmulti_style = NodeStyle()
+nonmulti_style['bgcolor'] = 'white'
+for leaf in tree.get_leaves():
+    if leaf in multies.values():
+        leaf.set_style(multinode_style)
+    else:
+        leaf.set_style(nonmulti_style)
+for node in tree.traverse():
+    if node.support < args.support_threshold:
+        node.delete(prevent_nondicotomic=False)
 
 if args.skip_pairing:
     print('Not attempting to match ancestral nodes.')
@@ -181,8 +190,11 @@ else:
         tmp_style['shape'] = 'circle'
         tmp_style['size'] = 15
         tmp_style['fgcolor'] = colors[i]
+        tmp_style['bgcolor'] = colors[i]
         for node in group:
-            node.set_style(tmp_style)
+            # node.set_style(tmp_style)
+            for leaf in node.get_leaves():
+                leaf.set_style(tmp_style)
 
 ################################################################################
 # Finally drawing the tree
@@ -191,4 +203,9 @@ else:
 tree_style = TreeStyle()
 if args.circular:
     tree_style.mode = 'c'
-tree.show(tree_style=tree_style)
+tree_style.show_leaf_name = False
+tree_style.show_branch_support = True
+if args.o:
+    tree.render(args.o, tree_style=tree_style)
+else:
+    tree.show(tree_style=tree_style)
