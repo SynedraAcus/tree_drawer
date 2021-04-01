@@ -10,7 +10,7 @@ domains that form a pair of sister leaves (*ie* are not part of a larger clade)
 are highlighted in dark gray. The sequences that are the only domain within
 their respective sequences are not highlighted. Example tree is shown below:
 
-![example.png](example tree) 
+![Example tree](example.png) 
 #### Usage
 Clone or download this repo, then call `./draw.py`. See `./draw.py -h` for
 command line interface.
