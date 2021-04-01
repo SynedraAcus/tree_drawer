@@ -37,14 +37,19 @@ parser.add_argument('--circular', action='store_true',
                     help='Use circular tree style')
 args = parser.parse_args()
 
-# Preprocessing the tree line
+################################################################################
+# Preprocessing the tree line and the tree
+################################################################################
+
 with open(args.t) as tree_file:
     tree_line = tree_file.readline() # Assume there is a single line in the file
 if args.bracketed_support:
     tree_line = change_support_format(tree_line)
 
+# Preparing the tree for further analysis
 tree = Tree(tree_line, quoted_node_names=args.quoted_names)
 tree.set_outgroup(tree.get_midpoint_outgroup())
+
 # Process raw names if necessary
 if args.hmmer_ids:
     print('Processing HMMER IDs...')
@@ -52,8 +57,13 @@ if args.hmmer_ids:
     name_map = hmmer_name_mapping(old_names)
     for leaf in tree.get_leaves():
         leaf.name = name_map[leaf.name]
+
+for node in tree.traverse():
+    if not node.is_leaf() and node.support < args.support_threshold:
+        node.delete(prevent_nondicotomic=False, preserve_branch_length=True)
+
 # Defining the multiple set
-print('Selecting multiples...')
+print('Selecting multiples...', end='')
 multies = {} #Name-to-node mapping
 multi_re = re.compile('(.+)_\d+$')
 
@@ -61,6 +71,7 @@ for leaf in tree.get_leaves():
     leaf.name = trim_name(leaf.name)
     if multi_re.match(leaf.name):
         multies[leaf.name] = leaf
+print(f'{len(multies)} found')
 # Trim subdomain numbers from non-multiple sequences
 print('Trimming postfixes from non-multiples...')
 to_trim = {} #Name:prefix
@@ -83,9 +94,6 @@ for leaf in tree.get_leaves():
         leaf.set_style(multinode_style)
     else:
         leaf.set_style(nonmulti_style)
-for node in tree.traverse():
-    if node.support < args.support_threshold:
-        node.delete(prevent_nondicotomic=False)
 
 if args.skip_pairing:
     print('Not attempting to match ancestral nodes.')
