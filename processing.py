@@ -11,7 +11,8 @@ def sub_replacement(match):
 
 def change_support_format(tree_line):
     """
-    Change support value format from bracketed to ete3-compatible colons
+    Change Newick branch support format from Biopython-compatible
+    bracketed to ete3-compatible colons
 
     For example:
     ((A:1, B:0.7)0.8[65], C) becomes ((A:1, B:0.7)65:0.8, C)
@@ -27,18 +28,16 @@ def trim_name(name):
     Trim the leaf name.
 
     Remove domain position (if any)
-    :param name:
-    :return:
     """
-    # TODO: Maybe there is something else that needs trimming?
     return re.sub('_\(\d+-\d+\)', lambda x: '', name)
 
 
 def add_multi_annotation(node, multies):
     """
     Add a list of multiples descending from this node to node annotation
-    :param node:
-    :return:
+
+    Assumes leaf-first traversal. If called for a node before any of its
+    descendants, this function will break.
     """
     if node.is_leaf():
         # For a leaf, add either name or nothing
@@ -53,21 +52,13 @@ def add_multi_annotation(node, multies):
 
 def match_score(vector1, vector2):
     """
-    Match score between prefix lists
+    Match score between prefix lists.
     :param vector1:
     :param vector2:
     :return:
     """
-    # Otherwise, a raw overlap
     s1 = set(vector1)
     s2 = set(vector2)
-    # if len(s1) < len(vector1) or len(s2) < len(vector2):
-    #     # If a node is a descendant to both parts of some sequence, it is not
-    #     # what we're interested in
-    #     #
-    #     # This part may screw us over if there is a lot of nested duplications
-    #     return 0
-    # else:
     return len(s1.intersection(s2))/len(s1.union(s2))
 
 
@@ -123,7 +114,8 @@ def hmmer_name_mapping(names):
             for name in matches:
                 r[name] = query + '_' + str(first_pos.index(positions[name]) + 1)
         else:
-            # Don't add postfixes and discard coordinates if it is the only domain in a given sequence
+            # Don't add postfixes and discard coordinates
+            # if it is the only domain in a sequence
             r[name] = query + '_1'
     return r
 

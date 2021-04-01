@@ -10,10 +10,7 @@ other multiple, it is trimmed before processing further.
 import re
 
 from argparse import ArgumentParser
-from copy import copy
-from collections import defaultdict
-from functools import reduce
-from ete3 import Tree, TreeStyle, NodeStyle, CircleFace
+from ete3 import Tree, TreeStyle, NodeStyle
 from processing import change_support_format, trim_name, add_multi_annotation, \
     match_score, hmmer_name_mapping, are_ancestors
 
@@ -23,7 +20,7 @@ parser.add_argument('-s', type=float, default=0.5,
                     help='Match score threshold')
 parser.add_argument('-o', type=str,
                     help='Image file. If not set, the tree is shown interactively.')
-parser.add_argument('--support_threshold', default=0, type=int,
+parser.add_argument('--support_threshold', default=0, type=float,
                     help='Collapse nodes below this support value')
 parser.add_argument('--bracketed_support', action='store_true',
                     help='Assume support values are bracketed')
@@ -62,7 +59,10 @@ for node in tree.traverse():
     if not node.is_leaf() and node.support < args.support_threshold:
         node.delete(prevent_nondicotomic=False, preserve_branch_length=True)
 
+################################################################################
 # Defining the multiple set
+################################################################################
+
 print('Selecting multiples...', end='')
 multies = {} #Name-to-node mapping
 multi_re = re.compile('(.+)_\d+$')
@@ -84,16 +84,18 @@ for name in to_trim:
     #multies[to_trim[name]] = multies[name]
     multies[name].name = to_trim[name]
     del multies[name]
-# Set the markers right now, but leave colors for when we have clades
+# The dark gray bgcolor is set for all multiples. If a leaf is later assigned to
+# the group, its style will be overridden. If not, this is left as the default.
 multinode_style = NodeStyle()
 multinode_style['bgcolor'] = 'gray'
-nonmulti_style = NodeStyle()
-nonmulti_style['bgcolor'] = 'white'
 for leaf in tree.get_leaves():
     if leaf in multies.values():
         leaf.set_style(multinode_style)
-    else:
-        leaf.set_style(nonmulti_style)
+
+################################################################################
+# Matching parts of a multidomain gene to each other and merging matches into
+# match groups.
+################################################################################
 
 if args.skip_pairing:
     print('Not attempting to match ancestral nodes.')
@@ -102,10 +104,7 @@ else:
     # Mapping out descendants
     for node in tree.traverse(strategy='postorder'):
         add_multi_annotation(node, multies)
-
-    ############################################################################
     # Selecting reciprocal best hit for each node with multidomain descendants
-    ############################################################################
 
     # Do not process leaves to avoid bloating match set and performing costly
     # operations on them
@@ -114,12 +113,12 @@ else:
     match_matrix = [[match_score(x.multi_descendants, y.multi_descendants) for x in node_refs]
                     for y in node_refs]
     matches = []
-    print('Searching through the match matrix...')
+    print('Searching through the match matrix...', end='')
     for index, line in enumerate(match_matrix):
         for element in range(index+1, len(line)):
             if line[element] < args.s or match_matrix[element][index] < args.s:
-                # Match quality cutoff. The exact value is arbitrary, but anything
-                # above 0.01 produces the same result in Chalcone
+                # Match quality cutoff. Can be tweaked to choose between larger
+                # looser groups (at lower values) and exact matches (at 1.0)
                 continue
             if (element, index) in matches:
                 continue
@@ -127,13 +126,12 @@ else:
                 continue
             matches.append((index, element))
     node_matches = [(node_refs[x[0]], node_refs[x[1]]) for x in matches]
-    print(f'Found {len(node_matches)} raw matches')
-    print('Cleaning match set...')
+    print(f'{len(node_matches)} raw matches found')
+    print('Cleaning match set...', end='')
     # Preserve only the most ancient possible matches, discarding newer ones
     # In other words, if two clades match, remove all matches for their subclades
     clean_matches = []
     for match in node_matches:
-        # match = node_matches.pop()
         anc0 = match[0].get_ancestors()
         anc1 = match[1].get_ancestors()
         found = False
@@ -164,17 +162,13 @@ else:
         tmp.add(match[0])
         tmp.add(match[1])
     print(f'{len(clean_matches)} matches between {len(tmp)} nodes remaining')
-    # for match in clean_matches:
-    #     print('MATCH')
-    #     print(sorted([x.name for x in match[0].get_leaves()]))
-    #     print(sorted([x.name for x in match[1].get_leaves()]))
 
     ############################################################################
     # Merge matches into match groups
     ############################################################################
     # For example, if three nodes have mutually overlapping sets of descendants,
     # they should become a single group of three, not three pairwise matches
-    print('Merging matches into groups...')
+    print('Merging matches into groups...', end='')
     groups = []
     for match in clean_matches:
         added = False
@@ -187,7 +181,8 @@ else:
         if not added:
             groups.append(set(match))
 
-    print(f'Produced {len(groups)} groups')
+    print(f'produced {len(groups)} groups')
+    # Perceptually distinct palette for groups. Copied from matplolib.cm.tab20
     colors = ('#1f77b4', '#aec7e8', '#ff7f0e', '#ffbb78', '#2ca02c',
               '#98df8a', '#d62728', '#ff9896', '#9467bd', '#c5b0d5',
               '#8c564b', '#c49c94', '#e377c2', '#f7b6d2', '#7f7f7f',
