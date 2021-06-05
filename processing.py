@@ -79,7 +79,7 @@ def maxindices(l):
     return max_indices
 
 
-def hmmer_name_mapping(names):
+def hmmer_name_mapping(names, rsga_style=False):
     """
     Turn HMMER-produced list of IDs into numbered and trimmed leaf IDs
     Takes a list of names, returns a dict {old_name: new_name}
@@ -87,9 +87,17 @@ def hmmer_name_mapping(names):
     r = {}
     for name in names:
         # Remove second part of name, it's useless
-        r[name] = name.split(' [subseq')[0]
+        if rsga_style:
+            r[name] =         r[name] = name.split(' _subseq')[0]
+        else:
+            r[name] = name.split(' [subseq')[0]
+        # processing two different variants of the subseq marker (at least in
+        # RsgA it was filtered at some point to remove square brackets)
     used_queries = set()
-    first_pos_re = re.compile('/(\d+)-\d+ ')
+    if rsga_style:
+        first_pos_re = re.compile('(\d+)-\d+')
+    else:
+        first_pos_re = re.compile('/(\d+)-\d+ ')
     for name in r:
         # Renumber subdomains so that they use their position
         # in a given protein instead of coordinates
@@ -97,7 +105,10 @@ def hmmer_name_mapping(names):
             # If the name has already been postfixed, it cannot be processed
             # by the code below
             continue
-        query = r[name].split('/')[0]
+        if rsga_style:
+            query = re.split(first_pos_re, r[name])[0]
+        else:
+            query = r[name].split('/')[0]
         if query in used_queries:
             continue
         used_queries.add(query)

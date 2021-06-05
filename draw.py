@@ -28,10 +28,14 @@ parser.add_argument('--quoted_names', action='store_true',
                     help='Assume leaf names are quoted')
 parser.add_argument('--hmmer_ids', action='store_true',
                     help='Sequence IDs are produced by HMMER')
+parser.add_argument('--rsga_ids', action='store_true',
+                    help='Hack for RsgA tree, not for general use')
 parser.add_argument('--skip_pairing', action='store_true',
                     help='Do not attempt to pair ancestral nodes, only mark leaves')
 parser.add_argument('--circular', action='store_true',
                     help='Use circular tree style')
+parser.add_argument('--show_ids', action='store_true',
+                    help='Show leaf names. Hidden by default')
 args = parser.parse_args()
 
 ################################################################################
@@ -51,7 +55,7 @@ tree.set_outgroup(tree.get_midpoint_outgroup())
 if args.hmmer_ids:
     print('Processing HMMER IDs...')
     old_names = [x.name for x in tree.get_leaves()]
-    name_map = hmmer_name_mapping(old_names)
+    name_map = hmmer_name_mapping(old_names, args.rsga_ids)
     for leaf in tree.get_leaves():
         leaf.name = name_map[leaf.name]
 
@@ -206,7 +210,8 @@ else:
 tree_style = TreeStyle()
 if args.circular:
     tree_style.mode = 'c'
-tree_style.show_leaf_name = False
+if not args.show_ids:
+    tree_style.show_leaf_name = False
 tree_style.show_branch_support = True
 if args.o:
     tree.render(args.o, tree_style=tree_style)
